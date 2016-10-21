@@ -2,10 +2,11 @@ package cn.com.agree.ab.a4.pub.logreader.reader;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,7 +36,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
@@ -45,10 +45,11 @@ import org.eclipse.swt.widgets.Text;
 import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogBean;
 import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogSegment;
 import cn.com.agree.ab.a4.pub.logreader.tool.DateUtil;
+import cn.com.agree.ab.a4.pub.logreader.tool.MessageUtils;
 
 public class AnalysisLog extends Shell
 {
-	/*
+	/**
 	 * 选择的client，server端日志路径
 	 */
 	private String serverPath = "";
@@ -161,6 +162,9 @@ public class AnalysisLog extends Shell
 		serverPathButton = new Button(composite, SWT.NONE);
 		serverPathButton.setText("服务端日志");
 		
+		mergeButton = new Button(composite, SWT.NONE);
+		mergeButton.setText("  合并   ");
+
 		exportPathText = new Text(composite, SWT.BORDER);
 		exportPathText.setEnabled(false);
 		exportPathText.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -172,7 +176,7 @@ public class AnalysisLog extends Shell
 		GridData gridData = new GridData(GridData.FILL_HORIZONTAL);
 		Composite parentComposite = new Composite(composite, SWT.NONE);
 		gridData = new GridData(GridData.FILL_HORIZONTAL);
-		gridData.horizontalSpan = 6;
+		gridData.horizontalSpan = 7;
 		gridData.verticalSpan = 1;
 		parentComposite.setLayoutData(gridData);
 		parentComposite.setLayout(new FillLayout());
@@ -182,6 +186,7 @@ public class AnalysisLog extends Shell
 		Composite searchComposite = new Composite(parentComposite, SWT.NONE);
 		createSearchComposite(dateComposite, searchComposite);
 
+		// table
 		Composite tableComposite = new Composite(composite, SWT.BORDER);
 		gridData = new GridData(GridData.FILL_BOTH);
 		gridData.horizontalSpan = 6;
@@ -292,6 +297,7 @@ public class AnalysisLog extends Shell
 		clientPathButton.addMouseListener(mouseListener);
 		serverPathButton.addMouseListener(mouseListener);
 		exportPathButton.addMouseListener(mouseListener);
+		mergeButton.addMouseListener(mergeListener);
 		searchButton.addMouseListener(mouseListener);
 		table.addMouseListener(mouseListener);
 
@@ -300,7 +306,6 @@ public class AnalysisLog extends Shell
 			@Override
 			public void keyReleased(KeyEvent e)
 			{
-				// TODO Auto-generated method stub
 				if (e.keyCode == 13)
 				{
 					searchButton.notifyListeners(SWT.MouseUp, new Event());
@@ -310,11 +315,33 @@ public class AnalysisLog extends Shell
 			@Override
 			public void keyPressed(KeyEvent e)
 			{
-				// TODO Auto-generated method stub
 
 			}
 		});
 	}
+
+	MouseListener mergeListener = new MouseAdapter()
+	{
+		@Override
+		public void mouseUp(MouseEvent e)
+		{
+			if (clientPath != null && serverPath != null)
+			{
+				logList = ClientSerMerge.clientServerMerger(clientPath,
+						serverPath);
+				if (logList != null)
+				{
+					tableComplete(logList);
+				} else
+				{
+					showMessage("日志文件存在问题或内容为空，请注意日志格式是否一致");
+				}
+			} else
+			{
+				MessageUtils.showError(AnalysisLog.this, "请检查文件路径后重试！");
+			}
+		}
+	};
 
 	MouseListener mouseListener = new MouseAdapter()
 	{
@@ -414,18 +441,6 @@ public class AnalysisLog extends Shell
 					}
 				}
 
-				if (clientPath != null && serverPath != null)
-				{
-					logList = ClientSerMerge.clientServerMerger(clientPath,
-							serverPath);
-					if (logList != null)
-					{
-						tableComplete(logList);
-					} else
-					{
-						showMessage("日志文件存在问题或内容为空，请注意日志格式是否一致");
-					}
-				}
 			} else if (exportPathButton == e.widget)
 			{
 				if (logList.size() == 0)
@@ -434,7 +449,7 @@ public class AnalysisLog extends Shell
 				} else
 				{
 					FileDialog f = new FileDialog(AnalysisLog.this);
-					f.setText("选择目标位置");
+					f.setText("选择导出位置");
 					String[] filter = { "*.log;*.txt" };
 					f.setFilterPath("F://");
 					f.setFilterExtensions(filter);
@@ -442,15 +457,8 @@ public class AnalysisLog extends Shell
 
 					if (newPath != null && !newPath.trim().equals(""))
 					{
-						try
-						{
-							exportPathText.setText(newPath);
-							exportLocal(logList, newPath);
-						} catch (IOException e1)
-						{
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
+						exportPathText.setText(newPath);
+						exportLocal(logList, newPath);
 					}
 				}
 			} else if (searchButton == e.widget)
@@ -550,13 +558,9 @@ public class AnalysisLog extends Shell
 	 * @param s
 	 *            即要显示的信息
 	 */
-	protected void showMessage(String s)
+	protected void showMessage(String message)
 	{
-		// TODO Auto-generated method stub
-		MessageBox dialog = new MessageBox(AnalysisLog.this, SWT.OK
-				| SWT.ICON_ERROR);
-		dialog.setMessage(s);
-		dialog.open();
+		MessageUtils.showError(AnalysisLog.this, message);
 	}
 
 	/**
@@ -568,7 +572,6 @@ public class AnalysisLog extends Shell
 	 * @throws IOException
 	 */
 	public void exportLocal(List<TradeLogSegment> list, String path)
-			throws IOException
 	{
 		List<TradeLogBean> logList = new LinkedList<TradeLogBean>();
 		TradeLogBean tBean = new TradeLogBean();
@@ -576,33 +579,63 @@ public class AnalysisLog extends Shell
 		File f = new File(path);
 		if (!f.exists())
 		{
-			f.createNewFile();
-		}
-
-		FileWriter fw = null;
-		BufferedWriter writer = null;
-		TradeLogSegment segment = new TradeLogSegment();
-
-		fw = new FileWriter(f);
-		writer = new BufferedWriter(new OutputStreamWriter(
-				new FileOutputStream(f), "utf-8"));
-
-		Iterator<TradeLogSegment> iterator = list.iterator();
-		while (iterator.hasNext())
-		{
-			segment = (TradeLogSegment) iterator.next();
-			logList = segment.getLogBeanList();
-			for (int i = 0; i < logList.size(); i++)
+			try
 			{
-				tBean = logList.get(i);
-				writer.write(tBean.getDate() + " " + tBean.getFlag() + " "
-						+ tBean.getTradeName() + " " + tBean.getMessage());
-				writer.newLine();
+				f.createNewFile();
+			} catch (IOException e)
+			{
+				showMessage("新建文件失败，请手动创建");
+				return;
 			}
 		}
-		writer.flush();
-		writer.close();
-		fw.close();
+		TradeLogSegment segment = new TradeLogSegment();
+		Iterator<TradeLogSegment> iterator = list.iterator();
+
+		FileOutputStream fos = null;
+		OutputStreamWriter osw = null;
+		BufferedWriter writer = null;
+		try
+		{
+			fos = new FileOutputStream(f);
+			osw = new OutputStreamWriter(fos,"UTF-8");
+			writer = new BufferedWriter(osw);
+			while (iterator.hasNext())
+			{
+				segment = (TradeLogSegment) iterator.next();
+				logList = segment.getLogBeanList();
+				for (int i = 0; i < logList.size(); i++)
+				{
+					tBean = logList.get(i);
+					writer.write(tBean.getDate() + " " + tBean.getFlag() + " "
+							+ tBean.getTradeName() + " " + tBean.getMessage());
+					writer.newLine();
+					writer.flush();
+				}
+			}
+		} catch (FileNotFoundException e)
+		{
+
+		} catch (UnsupportedEncodingException e)
+		{
+			
+		} catch (IOException e)
+		{
+			
+		} finally
+		{
+			try
+			{
+				if(writer != null)
+					writer.close();
+				if(osw != null)
+					osw.close();
+				if(fos != null)
+					fos.close();
+			} catch (IOException e2)
+			{
+			}
+		}
+
 	}
 
 	/**
@@ -613,7 +646,6 @@ public class AnalysisLog extends Shell
 	 */
 	protected void tableComplete(List<TradeLogSegment> list)
 	{
-		// TODO Auto-generated method stub
 		if (list == null)
 		{
 			return;
@@ -693,28 +725,24 @@ public class AnalysisLog extends Shell
 		@Override
 		public void addListener(ILabelProviderListener arg0)
 		{
-			// TODO Auto-generated method stub
 
 		}
 
 		@Override
 		public void dispose()
 		{
-			// TODO Auto-generated method stub
 
 		}
 
 		@Override
 		public boolean isLabelProperty(Object arg0, String arg1)
 		{
-			// TODO Auto-generated method stub
 			return false;
 		}
 
 		@Override
 		public void removeListener(ILabelProviderListener arg0)
 		{
-			// TODO Auto-generated method stub
 
 		}
 
