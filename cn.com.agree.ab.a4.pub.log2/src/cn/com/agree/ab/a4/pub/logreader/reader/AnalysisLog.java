@@ -51,20 +51,20 @@ public class AnalysisLog extends Shell
 	/*
 	 * 选择的client，server端日志路径
 	 */
-	private String serverPath;
-	private String clientPath;
+	private String serverPath = "";
+	private String clientPath = "";
 
-	//要导出的文件路径
+	// 要导出的文件路径
 	private String newPath;
-	
+
 	private String startTime = "";
 	private String endTime = "";
-	
+
 	/**
 	 * 记录完整的日志合并结果
 	 */
-	private List<TradeLogSegment> logList = new LinkedList<TradeLogSegment>();
-	
+	private List<TradeLogSegment> logList = null;
+
 	/**
 	 * 记录搜索的结果
 	 */
@@ -94,8 +94,7 @@ public class AnalysisLog extends Shell
 		{
 			e.printStackTrace();
 		}
-		
-		System.exit(0);
+
 	}
 
 	/**
@@ -130,28 +129,22 @@ public class AnalysisLog extends Shell
 		createConsole(console);
 
 		addListeners();
-		
-		clientPath = "D:\\eclipse0.0\\ab\\AB_Client\\Basic\\cn.com.agree.ab.a4.client\\ROOT\\log\\flow.log";
-		serverPath = "D:\\eclipse0.0\\ab\\AB_Server\\Basic\\cn.com.agree.ab.a4.server\\ROOT\\log\\flow.log";
-		try
-		{
-			logList = ClientSerMerge.clientServerMerger(clientPath, serverPath);
-		} catch (IOException e2)
-		{
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
+
+		clientPath = "F:\\workspace\\Ameba\\ab\\AB_Client\\Basic\\cn.com.agree.ab.a4.client\\ROOT\\log\\flow.log";
+		serverPath = "F:\\workspace\\Ameba\\ab\\AB_Server\\Basic\\cn.com.agree.ab.a4.server\\ROOT\\log\\flow.log";
+
+		logList = ClientSerMerge.clientServerMerger(clientPath, serverPath);
 		// 初始化数据
 		tableComplete(logList);
 	}
 
 	Text clientPathText, serverPathText, exportPathText;
-	Button clientPathButton, serverPathButton, exportPathButton;
+	Button clientPathButton, serverPathButton, mergeButton, exportPathButton;
 
 	private void createComposite(Composite composite)
 	{
 		GridLayout gridLayout = new GridLayout();
-		gridLayout.numColumns = 6;
+		gridLayout.numColumns = 7;
 		composite.setLayout(gridLayout);
 
 		clientPathText = new Text(composite, SWT.BORDER);
@@ -167,7 +160,7 @@ public class AnalysisLog extends Shell
 
 		serverPathButton = new Button(composite, SWT.NONE);
 		serverPathButton.setText("服务端日志");
-
+		
 		exportPathText = new Text(composite, SWT.BORDER);
 		exportPathText.setEnabled(false);
 		exportPathText.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -201,7 +194,8 @@ public class AnalysisLog extends Shell
 	private void createConsole(Composite console)
 	{
 		console.setLayout(new FillLayout());
-		consoleText = new Text(console, SWT.BORDER | SWT.MULTI | SWT.V_SCROLL | SWT.READ_ONLY | SWT.H_SCROLL);
+		consoleText = new Text(console, SWT.BORDER | SWT.MULTI | SWT.V_SCROLL
+				| SWT.READ_ONLY | SWT.H_SCROLL);
 	}
 
 	Text startTimeText, endTimeText, tradePathText, consoleText;
@@ -212,30 +206,35 @@ public class AnalysisLog extends Shell
 
 	private void createTableComposite(Composite tableComposite)
 	{
-		tableViewer = new TableViewer(tableComposite,
-				SWT.MULTI | SWT.FULL_SELECTION | SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL);
+		tableViewer = new TableViewer(tableComposite, SWT.MULTI
+				| SWT.FULL_SELECTION | SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL);
 
 		table = tableViewer.getTable();
 		table.setLinesVisible(true);
 		table.setHeaderVisible(true);
 
-		final TableColumn newColumnTableColumn = new TableColumn(table, SWT.CENTER);
+		final TableColumn newColumnTableColumn = new TableColumn(table,
+				SWT.CENTER);
 		newColumnTableColumn.setWidth(40);
 		newColumnTableColumn.setText("行号");
 
-		final TableColumn newColumnTableColumn_1 = new TableColumn(table, SWT.NONE);
+		final TableColumn newColumnTableColumn_1 = new TableColumn(table,
+				SWT.NONE);
 		newColumnTableColumn_1.setWidth(200);
 		newColumnTableColumn_1.setText("时间");
 
-		final TableColumn newColumnTableColumn_2 = new TableColumn(table, SWT.NONE);
+		final TableColumn newColumnTableColumn_2 = new TableColumn(table,
+				SWT.NONE);
 		newColumnTableColumn_2.setWidth(140);
 		newColumnTableColumn_2.setText("终端");
 
-		final TableColumn newColumnTableColumn_3 = new TableColumn(table, SWT.NONE);
+		final TableColumn newColumnTableColumn_3 = new TableColumn(table,
+				SWT.NONE);
 		newColumnTableColumn_3.setWidth(450);
 		newColumnTableColumn_3.setText("交易名");
 
-		final TableColumn newColumnTableColumn_4 = new TableColumn(table, SWT.NONE);
+		final TableColumn newColumnTableColumn_4 = new TableColumn(table,
+				SWT.NONE);
 		newColumnTableColumn_4.setWidth(850);
 		newColumnTableColumn_4.setText("信息");
 
@@ -246,7 +245,8 @@ public class AnalysisLog extends Shell
 		// 把数据集合给tableView
 	}
 
-	private void createSearchComposite(Composite dateComposite, Composite searchComposite)
+	private void createSearchComposite(Composite dateComposite,
+			Composite searchComposite)
 	{
 		dateComposite.setLayout(new FillLayout());
 		Composite startComposite = new Composite(dateComposite, SWT.NONE);
@@ -294,29 +294,28 @@ public class AnalysisLog extends Shell
 		exportPathButton.addMouseListener(mouseListener);
 		searchButton.addMouseListener(mouseListener);
 		table.addMouseListener(mouseListener);
-		
+
 		tradePathText.addKeyListener(new KeyListener()
 		{
 			@Override
 			public void keyReleased(KeyEvent e)
 			{
 				// TODO Auto-generated method stub
-				if(e.keyCode == 13)
+				if (e.keyCode == 13)
 				{
 					searchButton.notifyListeners(SWT.MouseUp, new Event());
 				}
 			}
-			
+
 			@Override
 			public void keyPressed(KeyEvent e)
 			{
 				// TODO Auto-generated method stub
-				
+
 			}
 		});
 	}
-	
-	
+
 	MouseListener mouseListener = new MouseAdapter()
 	{
 		@Override
@@ -325,16 +324,19 @@ public class AnalysisLog extends Shell
 
 			if (startTimeButton == e.widget || endTimeButton == e.widget)
 			{
-				final Shell dialog = new Shell(AnalysisLog.this, SWT.DIALOG_TRIM);
+				final Shell dialog = new Shell(AnalysisLog.this,
+						SWT.DIALOG_TRIM);
 				dialog.setLayout(new GridLayout(3, false));
 
-				final DateTime calendar = new DateTime(dialog, SWT.CALENDAR | SWT.BORDER);
+				final DateTime calendar = new DateTime(dialog, SWT.CALENDAR
+						| SWT.BORDER);
 
 				new Label(dialog, SWT.NONE);
 				new Label(dialog, SWT.NONE);
 				Button ok = new Button(dialog, SWT.PUSH);
 				ok.setText("OK");
-				ok.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
+				ok.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false,
+						false));
 				ok.addSelectionListener(new SelectionAdapter()
 				{
 					@Override
@@ -343,33 +345,38 @@ public class AnalysisLog extends Shell
 
 						if (startTimeButton == e.widget)
 						{
-							startTime = calendar.getYear() + "/" + (calendar.getMonth() + 1) + "/" + calendar.getDay();
+							startTime = calendar.getYear() + "/"
+									+ (calendar.getMonth() + 1) + "/"
+									+ calendar.getDay();
 							dialog.close();
 							startTimeText.setText(startTime);
 
-							if (endTime != "" && DateUtil.compareDate(startTime, endTime) > 0)
+							if (endTime != ""
+									&& DateUtil.compareDate(startTime, endTime) > 0)
 							{
 								showMessage("时间不合法");
 							}
 						} else
 						{
-							endTime = calendar.getYear() + "/" + (calendar.getMonth() + 1) + "/" + calendar.getDay();
+							endTime = calendar.getYear() + "/"
+									+ (calendar.getMonth() + 1) + "/"
+									+ calendar.getDay();
 							dialog.close();
 							endTimeText.setText(endTime);
 
-							if (startTime != "" && DateUtil.compareDate(startTime, endTime) > 0)
+							if (startTime != ""
+									&& DateUtil.compareDate(startTime, endTime) > 0)
 							{
 								showMessage("时间不合法");
 							}
 						}
-
 					}
-
 				});
 				dialog.setDefaultButton(ok);
 				dialog.pack();
 				dialog.open();
-			} else if (clientPathButton == e.widget || serverPathButton == e.widget)
+			} else if (clientPathButton == e.widget
+					|| serverPathButton == e.widget)
 			{
 				FileDialog client = new FileDialog(AnalysisLog.this);
 				client.setText("选择目标文件");
@@ -378,28 +385,30 @@ public class AnalysisLog extends Shell
 				if (clientPathButton == e.widget)
 				{
 					clientPath = client.open();
-					if (clientPath != null)
+					if (clientPath != null && clientPath.trim().equals(""))
 					{
 						String[] ss = clientPath.split("\\\\");
 						int i = ss.length;
 						String s = clientPath;
-						if(i > 4)
+						if (i > 4)
 						{
-							s = ss[0] + "\\"+ ss[1] + "\\" + "..."+ "\\" + ss[i-2] + "\\" + ss[i-1];
+							s = ss[0] + "\\" + ss[1] + "\\" + "..." + "\\"
+									+ ss[i - 2] + "\\" + ss[i - 1];
 						}
 						clientPathText.setText(s);
 					}
 				} else
 				{
 					serverPath = client.open();
-					if (serverPath != null)
+					if (serverPath != null && serverPath.trim().equals(""))
 					{
 						String[] ss = serverPath.split("\\\\");
 						int i = ss.length;
 						String s = serverPath;
-						if(i > 4)
+						if (i > 4)
 						{
-							s = ss[0] + "\\"+ ss[1] + "\\" + "..."+ "\\" + ss[i-2] + "\\" + ss[i-1];
+							s = ss[0] + "\\" + ss[1] + "\\" + "..." + "\\"
+									+ ss[i - 2] + "\\" + ss[i - 1];
 						}
 						serverPathText.setText(s);
 					}
@@ -407,18 +416,14 @@ public class AnalysisLog extends Shell
 
 				if (clientPath != null && serverPath != null)
 				{
-					try
+					logList = ClientSerMerge.clientServerMerger(clientPath,
+							serverPath);
+					if (logList != null)
 					{
-						logList = ClientSerMerge.clientServerMerger(clientPath, serverPath);
-						if (logList != null)
-						{
-							tableComplete(logList);
-						}
-					} catch (IOException e1)
+						tableComplete(logList);
+					} else
 					{
-						// TODO Auto-generated catch block
-						showMessage("日志文件存在问题，请注意日志格式是否一致");
-						e1.printStackTrace();
+						showMessage("日志文件存在问题或内容为空，请注意日志格式是否一致");
 					}
 				}
 			} else if (exportPathButton == e.widget)
@@ -435,7 +440,7 @@ public class AnalysisLog extends Shell
 					f.setFilterExtensions(filter);
 					newPath = f.open();
 
-					if ( newPath != null && !newPath.trim().equals(""))
+					if (newPath != null && !newPath.trim().equals(""))
 					{
 						try
 						{
@@ -502,7 +507,8 @@ public class AnalysisLog extends Shell
 					{
 						seg = seekList.get(i);
 
-						if (seg.getTradeName().toLowerCase().contains(search.toLowerCase()))
+						if (seg.getTradeName().toLowerCase()
+								.contains(search.toLowerCase()))
 						{
 							list.add(seg);
 						}
@@ -514,21 +520,22 @@ public class AnalysisLog extends Shell
 				tableComplete(seekList);
 			} else if (table == e.widget)
 			{
-				if(e.button == 1)
+				if (e.button == 1)
 				{
 					if (table.getItemCount() > 0)
 					{
-						
+
 						int ii = table.getSelectionIndex();
-						if (ii < 0 || ii >= table.getItemCount()) 
+						if (ii < 0 || ii >= table.getItemCount())
 						{
 							return;
 						}
 						StringBuffer sb = new StringBuffer();
 						TableItem item = table.getItem(ii);
-						
-						sb.append(item.getText(1) + "   " + item.getText(2) + "   " + item.getText(4));
-						
+
+						sb.append(item.getText(1) + "   " + item.getText(2)
+								+ "   " + item.getText(4));
+
 						consoleText.setText(sb.toString());
 					}
 				}
@@ -539,23 +546,29 @@ public class AnalysisLog extends Shell
 
 	/**
 	 * 弹窗提示
-	 * @param s 即要显示的信息
+	 * 
+	 * @param s
+	 *            即要显示的信息
 	 */
 	protected void showMessage(String s)
 	{
 		// TODO Auto-generated method stub
-		MessageBox dialog = new MessageBox(AnalysisLog.this, SWT.OK | SWT.ICON_ERROR);
+		MessageBox dialog = new MessageBox(AnalysisLog.this, SWT.OK
+				| SWT.ICON_ERROR);
 		dialog.setMessage(s);
 		dialog.open();
 	}
 
 	/**
 	 * 
-	 * @param list 要导出的交易集合
-	 * @param path 要导出的路径
+	 * @param list
+	 *            要导出的交易集合
+	 * @param path
+	 *            要导出的路径
 	 * @throws IOException
 	 */
-	public void exportLocal(List<TradeLogSegment> list, String path) throws IOException
+	public void exportLocal(List<TradeLogSegment> list, String path)
+			throws IOException
 	{
 		List<TradeLogBean> logList = new LinkedList<TradeLogBean>();
 		TradeLogBean tBean = new TradeLogBean();
@@ -571,7 +584,8 @@ public class AnalysisLog extends Shell
 		TradeLogSegment segment = new TradeLogSegment();
 
 		fw = new FileWriter(f);
-		writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), "utf-8"));
+		writer = new BufferedWriter(new OutputStreamWriter(
+				new FileOutputStream(f), "utf-8"));
 
 		Iterator<TradeLogSegment> iterator = list.iterator();
 		while (iterator.hasNext())
@@ -581,8 +595,8 @@ public class AnalysisLog extends Shell
 			for (int i = 0; i < logList.size(); i++)
 			{
 				tBean = logList.get(i);
-				writer.write(tBean.getDate() + " " + tBean.getFlag() + " " + tBean.getTradeName() + " "
-						+ tBean.getMessage());
+				writer.write(tBean.getDate() + " " + tBean.getFlag() + " "
+						+ tBean.getTradeName() + " " + tBean.getMessage());
 				writer.newLine();
 			}
 		}
@@ -593,12 +607,17 @@ public class AnalysisLog extends Shell
 
 	/**
 	 * 表格的数据插入动作
-	 * @param list 表格要显示的数据集合
+	 * 
+	 * @param list
+	 *            表格要显示的数据集合
 	 */
 	protected void tableComplete(List<TradeLogSegment> list)
 	{
 		// TODO Auto-generated method stub
-
+		if (list == null)
+		{
+			return;
+		}
 		table.removeAll();
 		tableRow = 0;
 		tableViewer.setInput(list);
