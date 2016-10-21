@@ -1,0 +1,480 @@
+package cn.com.agree.ab.a4.pub.logreader.reader;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.MessageBox;
+
+import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogBean;
+import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogSegment;
+import cn.com.agree.ab.a4.pub.logreader.tool.DateUtil;
+
+/**
+ * 客户端与服务端日志合并的实现
+ * @author Administrator
+ */
+public class ClientSerMerge {
+	
+	/**
+	 * 其中用到的标识
+	 */
+	private static String invoRequest = "InvokeRequest";
+	private static String issResponse = "IssueResponse";
+	private static String invoResponse = "InvokeResponse";
+	private static String issRequest = "IssueRequest";
+	
+	/**
+	 * 标记日志的归属
+	 */
+	private static String cFlag = "Terminal-client";
+	private static String sFlag = "Terminal-server";
+	
+	/**
+	 *客户端交易日志的分割片段
+	 */
+	private static List<TradeLogSegment> cLogList = new LinkedList<TradeLogSegment>();
+	
+	/**
+	 * 服务端交易日志的分割片段
+	 */
+	private static List<TradeLogSegment> sLogList = new LinkedList<TradeLogSegment>();
+	/**
+	 * 得到的混合了c端与s端的交易片段
+	 */
+	private static List<TradeLogSegment> CSLogList = new LinkedList<TradeLogSegment>();
+	
+	/**
+	 * 记录下c端日志中的所有mac地址
+	 */
+	private static Set<String> oidSet = new HashSet<String>();
+	
+	/**
+	 * 辅助oidSet的记录
+	 */
+	private static int csOid = 0;
+	
+	/**
+	 * 标记正在分割的日志文件属于c端还是s端
+	 */
+	private static int cs = 0;
+	
+	/**
+	 *  合并交易的整个方法
+	 * @param clientPath 传入的日志路径
+	 * @param serverPath 传入的日志路径，两者没有区别
+	 * @return 处理完成的交易日志
+	 * @throws IOException
+	 */
+	public static List<TradeLogSegment> clientServerMerger(String clientPath, String serverPath) throws IOException
+	{
+		csOid = 0;
+		if(cLogList.size() != 0 || sLogList.size() != 0 || oidSet.size() != 0)
+		{
+			cLogList.clear();
+			sLogList.clear();
+			oidSet.clear();
+		}
+		
+		if(clientPath.equals(serverPath))
+		{
+			MessageBox dialog = new MessageBox(Display.getCurrent().getActiveShell(), SWT.OK | SWT.ICON_ERROR);
+			dialog.setMessage("两个文件相同");
+			dialog.open();
+			return null;
+		}
+		
+		ToSegment(clientPath, oidSet);
+		ToSegment(serverPath, oidSet);
+				
+		
+//		cLogList = ToSegment(clientPath, invoRequest, issResponse, cFlag, oidSet);	
+//		sLogList = ToSegment(serverPath, invoResponse, issRequest, sFlag, null);
+		
+		if(!cLogList.isEmpty())
+		{
+			sLogList = SelOid(sLogList, oidSet);
+		}else
+		{
+			return null;
+		}
+		
+		CSLogList = CSMerger(cLogList,sLogList);
+		
+		return CSLogList;
+	}
+	
+	/**
+	 * 分割好的c端日志片段与s端日志片段合并起来
+	 */
+	private static List<TradeLogSegment> CSMerger(List<TradeLogSegment> cList, List<TradeLogSegment> sList) {
+		// TODO Auto-generated method stub
+		
+		List<TradeLogSegment>  list = new LinkedList<TradeLogSegment>();	
+		List<TradeLogSegment>  list1 = new LinkedList<TradeLogSegment>();
+		List<TradeLogBean>  listBean = new LinkedList<TradeLogBean>();
+		
+		TradeLogSegment seg = new TradeLogSegment();
+		TradeLogSegment segment = new TradeLogSegment();
+		TradeLogBean bean = new TradeLogBean();
+		
+		int snum = 0;
+		for(int i = 0; i < cList.size(); i++)
+		{
+			seg = cList.get(i);
+	        list.add(seg);
+	        
+	        while(snum<sList.size())
+	        {
+	        	if(i+1<cList.size())
+		        {	        	
+		        	if(seg.getTradeName().equals(sList.get(snum).getTradeName()))
+					{
+						list.add(sList.get(snum));
+						snum++;
+						break;
+					}else
+					{
+						snum++;
+					}
+		        }
+	        }			
+		}
+		
+		String tradeName = list.get(0).getTradeName();
+		segment.setOid(list.get(0).getOid());
+		segment.setTime(list.get(0).getTime());
+		segment.setTradeName(list.get(0).getTradeName());
+		
+		String flag = "";
+		
+		for(int i=0;i<list.size();i++)
+		{
+			seg = list.get(i);
+			flag = seg.getFlag();
+			
+			listBean = seg.getLogBeanList();
+			
+			for(int j=0;j<listBean.size();j++)
+			{
+				bean = listBean.get(j);
+				bean.setFlag(flag);
+				if(!tradeName.equals(bean.getTradeName()))
+				{				
+					list1.add(segment);
+					
+					segment = new TradeLogSegment();
+					segment.setOid(bean.getOid());
+					segment.setTime(bean.getDate());
+					segment.setTradeName(bean.getTradeName());
+					
+					tradeName = bean.getTradeName();
+				}
+		
+				segment.addLogBean(bean);
+			}
+			
+		}
+		
+		list1.add(segment);
+		
+		return list1;
+	}
+
+	/**
+	 * 筛选出s端中与c端对应的日志片段
+	 */
+	private static List<TradeLogSegment> SelOid(List<TradeLogSegment> sLogList, Set<String> oidSet) {
+		// TODO Auto-generated method stub
+		
+		List<TradeLogSegment> list = new LinkedList<TradeLogSegment>();
+		
+		for(int i = 0; i < sLogList.size(); i++ )
+		{
+			for(String s:oidSet)
+			{
+				if(s.equals(sLogList.get(i).getOid()))
+				{
+					list.add(sLogList.get(i));
+				}
+			}
+			
+		}
+		
+		return list;
+	}
+
+	/**
+	 * 分割日志片段，对c端s端路径有区别
+	 */
+	@SuppressWarnings("resource")
+	public static List<TradeLogSegment> ToSegment(String file, String request, String response, String flag, Set<String> oidSet) throws IOException
+	{
+		
+		
+		File cFile = new File(file);
+
+		InputStreamReader cisr = new InputStreamReader(new FileInputStream(cFile), "utf-8");
+		BufferedReader cbr = new BufferedReader(cisr);
+		
+		String cLog = null;
+		TradeLogBean tradeLog = new TradeLogBean();
+		StringBuffer message = new StringBuffer();
+		TradeLogSegment tradeSegment = new TradeLogSegment();
+		
+		List<TradeLogSegment> cLogList = new LinkedList<TradeLogSegment>();
+		
+		int jumpflag = 0;
+		
+		try {
+			
+			while((cLog = cbr.readLine()) != null )
+			{
+				if("".equals(cLog.trim()))
+				{
+					continue;
+				}
+//				
+				String[] space;
+
+				if(cLog.charAt(0) >= '0' && cLog.charAt(0) <= '9')
+				{
+					
+					space = cLog.split(" ");
+					
+					if( space.length < 8)
+					{
+						return null;
+					}
+					
+					if(message.length() != 0)
+					{
+						tradeLog.setMessage(message.toString());
+
+						tradeSegment.addLogBean(tradeLog);
+						message = new StringBuffer();
+					}
+					
+					if(jumpflag == 1)
+					{
+						tradeSegment.setOid(tradeLog.getOid());
+						tradeSegment.setTradeName(tradeLog.getTradeName());
+						tradeSegment.setTime(tradeLog.getDate());
+						cLogList.add(tradeSegment);
+						
+						tradeSegment = new TradeLogSegment();
+						
+						jumpflag = 0;
+					}
+					
+					if(cLog.contains(request) || cLog.contains(response))
+					{
+						jumpflag = 1;
+					}
+
+					tradeLog = new TradeLogBean();
+					
+					tradeLog.setFlag(flag);
+										
+					String ss = "";
+					ss = ss + space[2] + "/" + DateUtil.monthToInt(space[1]) + "/"
+					      + space[0] + " " + space[3] + " ";
+
+					tradeLog.setDate(ss);				
+					tradeLog.setThread(space[4]);				
+					tradeLog.setOid(space[5]);					
+					tradeLog.setTradeName(space[6]);								
+					message.append(space[7]);
+					
+					if(oidSet != null)
+					{
+						oidSet.add(space[5]);
+					}
+				}else
+				{
+					message.append(cLog + "\n");
+				}
+			}
+			
+			tradeLog.setMessage(message.toString());
+			
+			tradeSegment.setOid(tradeLog.getOid());
+			tradeSegment.setTradeName(tradeLog.getTradeName());
+			tradeSegment.setTime(tradeLog.getDate());
+			tradeSegment.addLogBean(tradeLog);
+			cLogList.add(tradeSegment);
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally
+		{
+			cisr.close();
+		}
+		
+		return cLogList;
+	}
+	
+	/**
+	 *  分割日志片段，对c端s端路径没有要求
+	 * @param file 要分割的交易日志路径
+	 * @param oidSet 记录c端中的mac地址集合
+	 * @throws IOException
+	 */
+	@SuppressWarnings({ "resource" })
+	public static void ToSegment(String file, Set<String> oidSet) throws IOException
+	{
+		if(oidSet.size() != 0)
+		{
+			csOid = 1;
+		}
+		
+		if(cs != 0)
+		{
+			cs = 0;
+		}
+		
+		File cFile = new File(file);
+
+		InputStreamReader cisr = new InputStreamReader(new FileInputStream(cFile), "utf-8");
+		BufferedReader cbr = new BufferedReader(cisr);
+		
+		String logLine = null;
+		TradeLogBean tradeLog = new TradeLogBean();
+		StringBuffer message = new StringBuffer();
+		TradeLogSegment tradeSegment = new TradeLogSegment();
+				
+		int jumpflag = 0;
+		
+		try {
+			while((logLine = cbr.readLine()) != null )
+			{
+				if("".equals(logLine.trim()))
+				{
+					continue;
+				}
+				
+				String[] space;
+
+				if((logLine.charAt(0) >= '0' && logLine.charAt(0) <= '9'))
+				{
+					space = logLine.split(" ");
+					
+					if( space.length < 8)
+					{
+						MessageBox dialog = new MessageBox(Display.getCurrent().getActiveShell(), SWT.OK | SWT.ICON_ERROR);
+						dialog.setMessage("日志文件格式错误");
+						dialog.open();
+						return;
+					}
+					
+					if(message.length() != 0)
+					{
+						tradeLog.setMessage(message.toString());
+
+						tradeSegment.addLogBean(tradeLog);
+						message = new StringBuffer();
+					}
+					
+					if(jumpflag == 1)
+					{
+						tradeSegment.setOid(tradeLog.getOid());
+						tradeSegment.setTradeName(tradeLog.getTradeName());
+						tradeSegment.setTime(tradeLog.getDate());
+						tradeSegment.setFlag(cFlag);
+						cLogList.add(tradeSegment);
+						
+						tradeSegment = new TradeLogSegment();
+						
+						jumpflag = 0;
+					}
+					if( jumpflag == 2)
+					{
+						tradeSegment.setOid(tradeLog.getOid());
+						tradeSegment.setTradeName(tradeLog.getTradeName());
+						tradeSegment.setTime(tradeLog.getDate());
+						tradeSegment.setFlag(sFlag);
+						sLogList.add(tradeSegment);
+						
+						tradeSegment = new TradeLogSegment();
+						
+						jumpflag = 0;
+					}
+					
+					//检测到为c端日志，记录，并且分割标识
+					if(logLine.contains(invoRequest) || logLine.contains(issResponse))
+					{
+						jumpflag = 1;
+						cs = 1;
+					}
+					//检测到为s端日志，记录，并且分割标识
+					if(logLine.contains(invoResponse) || logLine.contains(issRequest))
+					{
+						jumpflag = 2;
+						cs = 2;
+					}
+
+					tradeLog = new TradeLogBean();
+								
+					String ss = "";
+					ss = ss + space[2] + "/" + DateUtil.monthToInt(space[1]) + "/"
+					      + space[0] + " " + space[3] + " ";
+
+					tradeLog.setDate(ss);				
+					tradeLog.setThread(space[4]);				
+					tradeLog.setOid(space[5]);					
+					tradeLog.setTradeName(space[6]);
+					
+					for(int i=7;i<space.length ;i++)
+					{
+						message.append(space[i] + " ");
+					}
+									
+					if(csOid == 0)
+					{
+						oidSet.add(space[5]);
+					}
+				}else
+				{
+					message.append("\n"+logLine);
+				}
+			}
+			
+			tradeLog.setMessage(message.toString());
+			
+			tradeSegment.setOid(tradeLog.getOid());
+			tradeSegment.setTradeName(tradeLog.getTradeName());
+			tradeSegment.setTime(tradeLog.getDate());
+			tradeSegment.addLogBean(tradeLog);
+			
+			if(cs == 1 || cs == 0)
+			{
+				tradeSegment.setFlag(cFlag);
+				cLogList.add(tradeSegment);
+			}else if(cs == 2)
+			{
+				if(csOid == 0){
+					oidSet.clear();
+				}			
+				tradeSegment.setFlag(sFlag);
+				sLogList.add(tradeSegment);
+			}
+					
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally
+		{
+			cisr.close();
+		}
+	}
+
+}
