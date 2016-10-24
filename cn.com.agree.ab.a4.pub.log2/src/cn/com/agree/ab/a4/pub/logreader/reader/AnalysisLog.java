@@ -7,9 +7,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
@@ -18,6 +20,8 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.MouseAdapter;
@@ -25,6 +29,9 @@ import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -44,6 +51,7 @@ import org.eclipse.swt.widgets.Text;
 
 import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogBean;
 import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogSegment;
+import cn.com.agree.ab.a4.pub.logreader.constant.DataConstant;
 import cn.com.agree.ab.a4.pub.logreader.tool.DateUtil;
 import cn.com.agree.ab.a4.pub.logreader.tool.MessageUtils;
 
@@ -107,6 +115,14 @@ public class AnalysisLog extends Shell
 	{
 		super(display, SWT.SHELL_TRIM);
 		setLayout(new FillLayout(SWT.HORIZONTAL));
+		addDisposeListener(new DisposeListener()
+		{
+			@Override
+			public void widgetDisposed(DisposeEvent e)
+			{
+				dispose();
+			}
+		});
 
 		createContents();
 	}
@@ -131,12 +147,12 @@ public class AnalysisLog extends Shell
 
 		addListeners();
 
-		clientPath = "F:\\workspace\\Ameba\\ab\\AB_Client\\Basic\\cn.com.agree.ab.a4.client\\ROOT\\log\\flow.log";
-		serverPath = "F:\\workspace\\Ameba\\ab\\AB_Server\\Basic\\cn.com.agree.ab.a4.server\\ROOT\\log\\flow.log";
+//		clientPath = "F:\\workspace\\Ameba\\ab\\AB_Client\\Basic\\cn.com.agree.ab.a4.client\\ROOT\\log\\flow.log";
+//		serverPath = "F:\\workspace\\Ameba\\ab\\AB_Server\\Basic\\cn.com.agree.ab.a4.server\\ROOT\\log\\flow.log";
 
-		logList = ClientSerMerge.clientServerMerger(clientPath, serverPath);
-		// 初始化数据
-		tableComplete(logList);
+//		logList = ClientSerMerge.clientServerMerger(clientPath, serverPath);
+//		// 初始化数据
+//		tableComplete(logList);
 	}
 
 	Text clientPathText, serverPathText, exportPathText;
@@ -161,7 +177,7 @@ public class AnalysisLog extends Shell
 
 		serverPathButton = new Button(composite, SWT.NONE);
 		serverPathButton.setText("服务端日志");
-		
+
 		mergeButton = new Button(composite, SWT.NONE);
 		mergeButton.setText("  合并   ");
 
@@ -193,7 +209,6 @@ public class AnalysisLog extends Shell
 		tableComposite.setLayoutData(gridData);
 		tableComposite.setLayout(new FillLayout());
 		createTableComposite(tableComposite);
-
 	}
 
 	private void createConsole(Composite console)
@@ -208,6 +223,9 @@ public class AnalysisLog extends Shell
 	private TableViewer tableViewer;
 	private Table table;
 	int tableRow = 0;
+	private Set<Integer> exceptionRowSet = new HashSet<Integer>();
+	Color color = new Color(null, 255, 0, 0);
+	Font font = new Font(null, new FontData("微软雅黑", 9, 1));
 
 	private void createTableComposite(Composite tableComposite)
 	{
@@ -325,8 +343,14 @@ public class AnalysisLog extends Shell
 		@Override
 		public void mouseUp(MouseEvent e)
 		{
-			if (clientPath != null && serverPath != null)
+			if (clientPath != null && !clientPath.trim().equals("")
+					&& serverPath != null && !serverPath.trim().equals(""))
 			{
+				if(clientPath.equals(serverPath))
+				{
+					showMessage(DataConstant.SameFile);
+					return;
+				}
 				logList = ClientSerMerge.clientServerMerger(clientPath,
 						serverPath);
 				if (logList != null)
@@ -334,11 +358,11 @@ public class AnalysisLog extends Shell
 					tableComplete(logList);
 				} else
 				{
-					showMessage("日志文件存在问题或内容为空，请注意日志格式是否一致");
+					showMessage(DataConstant.LogContent);
 				}
 			} else
 			{
-				MessageUtils.showError(AnalysisLog.this, "请检查文件路径后重试！");
+				MessageUtils.showError(AnalysisLog.this, DataConstant.FilePath);
 			}
 		}
 	};
@@ -376,26 +400,28 @@ public class AnalysisLog extends Shell
 									+ (calendar.getMonth() + 1) + "/"
 									+ calendar.getDay();
 							dialog.close();
-							startTimeText.setText(startTime);
 
-							if (endTime != ""
+							if (endTime != null && !endTime.trim().equals("")
 									&& DateUtil.compareDate(startTime, endTime) > 0)
 							{
-								showMessage("时间不合法");
+								showMessage(DataConstant.TIME_INFO);
+								return;
 							}
+							startTimeText.setText(startTime);
 						} else
 						{
 							endTime = calendar.getYear() + "/"
 									+ (calendar.getMonth() + 1) + "/"
 									+ calendar.getDay();
 							dialog.close();
-							endTimeText.setText(endTime);
 
-							if (startTime != ""
+							if (startTime != null && !startTime.trim().equals("")
 									&& DateUtil.compareDate(startTime, endTime) > 0)
 							{
-								showMessage("时间不合法");
+								showMessage(DataConstant.TIME_INFO);
+								return;
 							}
+							endTimeText.setText(endTime);
 						}
 					}
 				});
@@ -412,7 +438,7 @@ public class AnalysisLog extends Shell
 				if (clientPathButton == e.widget)
 				{
 					clientPath = client.open();
-					if (clientPath != null && clientPath.trim().equals(""))
+					if (clientPath != null && !clientPath.trim().equals(""))
 					{
 						String[] ss = clientPath.split("\\\\");
 						int i = ss.length;
@@ -427,7 +453,7 @@ public class AnalysisLog extends Shell
 				} else
 				{
 					serverPath = client.open();
-					if (serverPath != null && serverPath.trim().equals(""))
+					if (serverPath != null && !serverPath.trim().equals(""))
 					{
 						String[] ss = serverPath.split("\\\\");
 						int i = ss.length;
@@ -443,13 +469,13 @@ public class AnalysisLog extends Shell
 
 			} else if (exportPathButton == e.widget)
 			{
-				if (logList.size() == 0)
+				if (logList == null || logList.size() <= 0)
 				{
-					showMessage("无可导出日志");
+					showMessage(DataConstant.NoneContent);
 				} else
 				{
 					FileDialog f = new FileDialog(AnalysisLog.this);
-					f.setText("选择导出位置");
+					f.setText(DataConstant.ExportPath);
 					String[] filter = { "*.log;*.txt" };
 					f.setFilterPath("F://");
 					f.setFilterExtensions(filter);
@@ -472,14 +498,16 @@ public class AnalysisLog extends Shell
 				}
 				seekList.addAll(logList);
 
-				if (startTime != "")
+				if (startTime != null && !startTime.trim().equals("")
+						&& endTime != null && !endTime.trim().equals(""))
 				{
 					list = new LinkedList<TradeLogSegment>();
 					for (int i = 0; i < seekList.size(); i++)
 					{
 						seg = seekList.get(i);
 
-						if (DateUtil.compareDate(startTime, seg.getTime()) <= 0)
+						if (DateUtil.compareDate(startTime, seg.getTime()) <= 0
+								&& DateUtil.compareDate(endTime, seg.getTime()) >= 0)
 						{
 							list.add(seg);
 						}
@@ -489,24 +517,7 @@ public class AnalysisLog extends Shell
 					seekList.addAll(list);
 				}
 
-				if (endTime != "")
-				{
-					list = new LinkedList<TradeLogSegment>();
-					for (int i = 0; i < seekList.size(); i++)
-					{
-						seg = seekList.get(i);
-
-						if (DateUtil.compareDate(endTime, seg.getTime()) >= 0)
-						{
-							list.add(seg);
-						}
-					}
-
-					seekList.clear();
-					seekList.addAll(list);
-				}
-
-				if (tradePathText.getText() != "")
+				if (tradePathText.getText() != null && !tradePathText.getText().trim().equals(""))
 				{
 					String search = tradePathText.getText();
 					search = search.replace("\\", "/");
@@ -584,7 +595,7 @@ public class AnalysisLog extends Shell
 				f.createNewFile();
 			} catch (IOException e)
 			{
-				showMessage("新建文件失败，请手动创建");
+				showMessage(DataConstant.FileCreateError);
 				return;
 			}
 		}
@@ -597,7 +608,7 @@ public class AnalysisLog extends Shell
 		try
 		{
 			fos = new FileOutputStream(f);
-			osw = new OutputStreamWriter(fos,"UTF-8");
+			osw = new OutputStreamWriter(fos, DataConstant.ExportEncoding);
 			writer = new BufferedWriter(osw);
 			while (iterator.hasNext())
 			{
@@ -617,19 +628,19 @@ public class AnalysisLog extends Shell
 
 		} catch (UnsupportedEncodingException e)
 		{
-			
+
 		} catch (IOException e)
 		{
-			
+
 		} finally
 		{
 			try
 			{
-				if(writer != null)
+				if (writer != null)
 					writer.close();
-				if(osw != null)
+				if (osw != null)
 					osw.close();
-				if(fos != null)
+				if (fos != null)
 					fos.close();
 			} catch (IOException e2)
 			{
@@ -652,7 +663,14 @@ public class AnalysisLog extends Shell
 		}
 		table.removeAll();
 		tableRow = 0;
+		exceptionRowSet.clear();
 		tableViewer.setInput(list);
+		for (int i : exceptionRowSet)
+		{
+			TableItem item = table.getItem(i);
+			item.setForeground(color);
+			item.setFont(font);
+		}
 	}
 
 	@Override
@@ -711,6 +729,12 @@ public class AnalysisLog extends Shell
 					return bean.getTradeName();
 				} else if (columnIndex == 4)
 				{
+					String message = bean.getMessage();
+					if (message != null
+							&& message.trim().startsWith("[Exception]"))
+					{
+						exceptionRowSet.add(tableRow - 1);
+					}
 					return bean.getMessage();
 				}
 			}
@@ -745,6 +769,19 @@ public class AnalysisLog extends Shell
 		{
 
 		}
-
+	}
+	
+	@Override
+	public void dispose()
+	{
+		super.dispose();
+		if (font != null && !font.isDisposed())
+		{
+			font.dispose();
+		}
+		if (color != null && !color.isDisposed())
+		{
+			color.dispose();
+		}
 	}
 }

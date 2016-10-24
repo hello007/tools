@@ -12,12 +12,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.MessageBox;
 
 import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogBean;
 import cn.com.agree.ab.a4.pub.logreader.Bean.TradeLogSegment;
+import cn.com.agree.ab.a4.pub.logreader.constant.DataConstant;
 import cn.com.agree.ab.a4.pub.logreader.tool.DateUtil;
 import cn.com.agree.ab.a4.pub.logreader.tool.MessageUtils;
 
@@ -90,12 +89,6 @@ public class ClientSerMerge {
 			oidSet.clear();
 		}
 
-		if (clientPath.equals(serverPath))
-		{
-			showMessage("两个文件相同");
-			return null;
-		}
-
 		ToSegment(clientPath, oidSet);
 		ToSegment(serverPath, oidSet);
 
@@ -124,8 +117,6 @@ public class ClientSerMerge {
 	private static List<TradeLogSegment> CSMerger(List<TradeLogSegment> cList,
 			List<TradeLogSegment> sList)
 	{
-		// TODO Auto-generated method stub
-
 		List<TradeLogSegment> list = new LinkedList<TradeLogSegment>();
 		List<TradeLogSegment> tradeSegments = new LinkedList<TradeLogSegment>();
 		List<TradeLogBean> listBean = new LinkedList<TradeLogBean>();
@@ -210,8 +201,6 @@ public class ClientSerMerge {
 	private static List<TradeLogSegment> SelOid(List<TradeLogSegment> sLogList,
 			Set<String> oidSet)
 	{
-		// TODO Auto-generated method stub
-
 		List<TradeLogSegment> list = new LinkedList<TradeLogSegment>();
 
 		for (int i = 0; i < sLogList.size(); i++)
@@ -241,7 +230,7 @@ public class ClientSerMerge {
 		File cFile = new File(file);
 
 		InputStreamReader cisr = new InputStreamReader(new FileInputStream(
-				cFile), "utf-8");
+				cFile), DataConstant.ImportEncoding);
 		BufferedReader cbr = new BufferedReader(cisr);
 
 		String cLog = null;
@@ -334,7 +323,6 @@ public class ClientSerMerge {
 
 		} catch (IOException e)
 		{
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} finally
 		{
@@ -375,10 +363,10 @@ public class ClientSerMerge {
 		BufferedReader cbr = null;
 		try
 		{
-			cisr = new InputStreamReader(new FileInputStream(cFile), "utf-8");
+			cisr = new InputStreamReader(new FileInputStream(cFile), DataConstant.ImportEncoding);
 		} catch (UnsupportedEncodingException e1)
 		{
-			showMessage("不支持该编码类型的文件");
+			showMessage(DataConstant.ErrorEncoding);
 			e1.printStackTrace();
 			return;
 		} catch (FileNotFoundException e1)
@@ -413,7 +401,7 @@ public class ClientSerMerge {
 
 					if (space.length < 8)
 					{
-						MessageUtils.showError(Display.getCurrent().getShells()[0], "日志文件格式错误");
+						MessageUtils.showError(Display.getCurrent().getShells()[0], DataConstant.LogPattern);
 						break;
 					}
 
@@ -542,9 +530,6 @@ public class ClientSerMerge {
 	 */
 	protected static void showMessage(String s)
 	{
-		MessageBox dialog = new MessageBox(Display.getCurrent().getShells()[0],
-				SWT.OK | SWT.ICON_ERROR);
-		dialog.setMessage(s);
-		dialog.open();
+		MessageUtils.showError(Display.getCurrent().getShells()[0], s);
 	}
 }
