@@ -189,7 +189,7 @@ public class AnalysisLog extends Shell
 		// table
 		Composite tableComposite = new Composite(composite, SWT.BORDER);
 		gridData = new GridData(GridData.FILL_BOTH);
-		gridData.horizontalSpan = 6;
+		gridData.horizontalSpan = 7;
 		tableComposite.setLayoutData(gridData);
 		tableComposite.setLayout(new FillLayout());
 		createTableComposite(tableComposite);
